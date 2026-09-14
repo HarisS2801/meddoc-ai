@@ -1,0 +1,28 @@
+# Diabetes Management Plan (SYNTHETIC DOCUMENT - NOT REAL PATIENT DATA)
+
+## Purpose
+
+This document summarises the diabetes management plan discussed during the
+consultation. It is intended as a reference for the patient and the care team.
+
+## Key instructions
+
+- Monitor blood glucose twice daily: fasting in the morning and two hours after
+  dinner.
+- Take metformin 500 mg with breakfast and dinner.
+- Record readings in the provided diary and bring it to the next appointment.
+- Follow the national guidelines for annual foot and eye examinations.
+- If fasting readings exceed 10 mmol/L for three consecutive days, contact the
+  clinic before making any changes to treatment.
+
+## Follow-up
+
+A follow-up appointment is scheduled for 15 October. Please bring a list of
+current medications and the glucose diary to that visit. Blood test results
+will be reviewed during the follow-up. If you experience symptoms such as
+severe hypoglycaemia, seek medical attention immediately.
+
+## Warnings
+
+This document is a synthetic sample used for software development and testing.
+It is not medical advice and must not be used to make treatment decisions.

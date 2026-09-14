@@ -10,7 +10,7 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health
+from app.api.routes import documents, health
 from app.core import exceptions
 from app.core.config import get_settings
 from app.core.logging import setup_logging
@@ -45,6 +45,7 @@ def create_app() -> FastAPI:
 
     exceptions.register_exception_handlers(application)
     application.include_router(health.router, prefix="/api")
+    application.include_router(documents.router, prefix="/api")
 
     return application
 
