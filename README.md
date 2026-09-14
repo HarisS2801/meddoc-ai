@@ -14,7 +14,7 @@ Section 9 of the plan and the roadmap below.
 ## Current state
 
 - [x] Phase 1 — Project setup: backend skeleton with `/api/health`, frontend scaffold, tests
-- [ ] Phase 2 — Database and Pydantic schemas
+- [x] Phase 2 — Database and Pydantic schemas
 - [ ] Phase 3 — Document upload & processing
 - [ ] Phase 4 — Embeddings & vector store
 - [ ] Phase 5 — RAG chat
