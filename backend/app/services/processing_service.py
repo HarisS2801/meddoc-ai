@@ -15,6 +15,8 @@ from app.core.enums import DocumentStatus
 from app.core.exceptions import InvalidFileError
 from app.core.logging import get_logger
 from app.db.models import Document, DocumentChunk
+from app.services import vector_store as vector_store_module
+from app.services.embedding_service import build_embedding_service
 from app.utils.file_validator import CONTENT_TYPE_PDF, CONTENT_TYPE_TEXT
 from app.utils.text_cleaner import chunk_text, clean_text, is_empty_text
 
@@ -101,3 +103,36 @@ def process_document(db: Session, document: Document, file_path: Path) -> Docume
         document.page_count,
     )
     return document
+
+
+def embed_document_chunks(db: Session, document: Document) -> int:
+    """Embed every chunk of a processed document and index it in ChromaDB.
+
+    Returns the number of chunks embedded. Raises on failure so callers
+    can decide whether to surface or degrade the error.
+    """
+    if not document.chunks:
+        return 0
+
+    service = build_embedding_service()
+    vectors = service.embed_texts([chunk.content for chunk in document.chunks])
+
+    store = vector_store_module.get_vector_store()
+    store.upsert_chunks(
+        [
+            {
+                "chunk_id": str(chunk.id),
+                "vector": vector,
+                "document_id": document.id,
+                "page_number": chunk.page_number,
+                "text": chunk.content,
+            }
+            for chunk, vector in zip(document.chunks, vectors)
+        ]
+    )
+
+    for chunk in document.chunks:
+        chunk.embedding_id = str(chunk.id)
+    db.commit()
+    logger.info("Indexed %d chunks for '%s'", len(vectors), document.filename)
+    return len(vectors)

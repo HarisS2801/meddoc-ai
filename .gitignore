@@ -1,32 +1,65 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
 # Python
 __pycache__/
 *.py[cod]
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-backend/.venv/
+*.pyo
+*.pyd
+
+# Virtual environments
 .venv/
+venv/
+env/
 
-# Environment
-.env
-*.env
-!.env.example
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Node / frontend
-frontend/node_modules/
-frontend/dist/
-npm-debug.log*
-
-# Data (uploads, SQLite, vector db)
-backend/data/
-data/
-
-# IDE / OS
+# IDE
 .vscode/
 .idea/
-.DS_Store
-Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Build files
+dist/
+build/
+.next/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
 
 # Logs
 *.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# Uploaded/generated medical documents
+uploads/
+uploaded_files/
+generated/
+*.pdf
+*.docx
+
+# Python tooling
+.mypy_cache/
+.ruff_cache/
+
+# Local development
+*.local

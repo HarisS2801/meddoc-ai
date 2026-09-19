@@ -1,0 +1,28 @@
+SYNTHETIC DOCUMENT - HYPERTENSION FOLLOW-UP NOTE
+Fictional patient record. Contains no real patient data.
+
+PATIENT: Sam Rivera (fictional)
+MRN: 1002
+DATE OF VISIT: 2026-05-20
+
+VITAL SIGNS
+- Blood pressure: 128/82 mmHg (seated, right arm)
+- Heart rate: 72 bpm
+- Weight: 84.5 kg
+
+MEDICATIONS
+- Losartan 50 mg once daily
+- Continue the current dose; report any dizziness or swelling
+
+LABORATORY ORDERS
+- Basic metabolic panel with potassium: complete blood count
+- Blood draw scheduled: 2026-06-20
+
+PLAN
+- Recheck blood pressure in three months at the next appointment
+- Next scheduled appointment: 2026-08-20
+- Encourage home blood pressure readings twice per week
+
+CLINIC CONTACT
+- Phone: (555) 010-2002 (synthetic)
+- Refill requests should be submitted 5 business days before running out.

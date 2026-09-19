@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.db.models import Document, DocumentChunk
+from app.services.embedding_service import build_embedding_service
 from tests.fixtures.pdf_gen import corrupt_pdf_bytes, sample_pdf_bytes
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
@@ -140,3 +141,44 @@ class TestListGetDelete:
         resp = client.delete("/api/documents/999999")
         assert resp.status_code == 404
         assert resp.json()["error"]["code"] == "not_found"
+
+
+class TestVectorIndexing:
+    """Uploads should index chunks into the vector store and clean up on delete."""
+
+    def test_upload_indexes_chunks_and_sets_embedding_ids(self, client, vector_store, db_session):
+        document_id = _upload(
+            client, "index.pdf", sample_pdf_bytes(), "application/pdf"
+        ).json()["id"]
+
+        assert vector_store.count() == 3
+        chunks = db_session.scalars(
+            select(DocumentChunk).where(DocumentChunk.document_id == document_id)
+        ).all()
+        assert len(chunks) == 3
+        assert all(chunk.embedding_id is not None for chunk in chunks)
+
+    def test_exact_chunk_text_retrieval_ranks_first(self, client, vector_store, db_session):
+        content = (FIXTURES / "sample.txt").read_text(encoding="utf-8")
+        document_id = _upload(
+            client, "sample.txt", content.encode("utf-8"), "text/plain"
+        ).json()["id"]
+
+        chunk = db_session.scalars(
+            select(DocumentChunk).where(DocumentChunk.document_id == document_id)
+        ).first()
+        service = build_embedding_service()
+        hits = vector_store.search(service.embed_text(chunk.content), top_k=1)
+
+        assert hits
+        assert hits[0]["chunk_id"] == str(chunk.id)
+
+    def test_delete_removes_vectors(self, client, vector_store):
+        document_id = _upload(
+            client, "delete.pdf", sample_pdf_bytes(), "application/pdf"
+        ).json()["id"]
+        assert vector_store.count() == 3
+
+        client.delete(f"/api/documents/{document_id}")
+
+        assert vector_store.count() == 0

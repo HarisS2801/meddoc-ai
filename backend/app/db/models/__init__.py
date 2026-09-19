@@ -8,6 +8,7 @@ from app.db.models.document import Document, DocumentChunk
 from app.db.models.conversation import Conversation, Message
 from app.db.models.review import ReviewItem
 from app.db.models.evaluation import EvaluationResult
+from app.db.models.summary import Summary
 
 __all__ = [
     "Conversation",
@@ -16,4 +17,5 @@ __all__ = [
     "EvaluationResult",
     "Message",
     "ReviewItem",
+    "Summary",
 ]

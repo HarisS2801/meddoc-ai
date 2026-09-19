@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.core.exceptions import (
     AppError,
     ConflictError,
+    GroqUnavailableError,
     NotFoundError,
     register_exception_handlers,
     to_error_response,
@@ -39,6 +40,22 @@ def test_conflict_error():
     error = ConflictError("Already reviewed.")
     assert error.status_code == 409
     assert error.code == "conflict"
+
+
+def test_groq_unavailable_error_merges_metadata_into_envelope():
+    error = GroqUnavailableError()
+    assert error.status_code == 503
+    assert error.code == "groq_unavailable"
+    response = to_error_response(error)
+    import json
+
+    envelope = json.loads(response.body)["error"]
+    assert envelope["code"] == "groq_unavailable"
+    assert envelope["success"] is False
+    assert envelope["provider"] == "groq"
+    assert envelope["generation_status"] == "unavailable"
+    assert envelope["error_code"] == "GROQ_UNAVAILABLE"
+    assert envelope["message"]
 
 
 class TestClientExceptionHandlers:

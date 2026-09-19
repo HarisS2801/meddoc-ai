@@ -3,6 +3,11 @@
 Every service error raised in the app derives from ``AppError`` so that
 the API layer can convert it into a consistent ``{"error": {...}}``
 response.
+
+Provider failures (Groq unavailable) carry extra metadata
+(``success``, ``provider``, ``generation_status``, ``error_code``) that is
+merged into the error envelope so clients can show a precise, safe
+message instead of a fabricated medical answer.
 """
 
 from fastapi import FastAPI, Request
@@ -21,10 +26,12 @@ class AppError(Exception):
         *,
         status_code: int = 400,
         code: str = "app_error",
+        details: dict | None = None,
     ) -> None:
         self.message = message
         self.status_code = status_code
         self.code = code
+        self.details = details
         super().__init__(message)
 
 
@@ -43,11 +50,52 @@ class InvalidFileError(AppError):
         super().__init__(message, status_code=422, code="invalid_file")
 
 
+GROQ_UNAVAILABLE_MESSAGE = (
+    "Groq AI is currently unavailable. Please try again later."
+)
+
+GROQ_MISSING_KEY_MESSAGE = (
+    "GROQ_API_KEY is not set, so AI analysis is unavailable. Configure "
+    "GROQ_API_KEY in backend/.env (see .env.example) and restart the server "
+    "to enable Groq AI."
+)
+
+
+class GroqUnavailableError(AppError):
+    """Groq could not produce an answer (missing key, quota, auth, timeout,
+    network, or unreadable output).
+
+    The app never fabricates a medical summary when this happens: the
+    client receives a controlled 503 with machine-readable provider
+    metadata.
+    """
+
+    def __init__(self, message: str = GROQ_UNAVAILABLE_MESSAGE) -> None:
+        super().__init__(
+            message,
+            status_code=503,
+            code="groq_unavailable",
+            details={
+                "success": False,
+                "provider": "groq",
+                "generation_status": "unavailable",
+                "error_code": "GROQ_UNAVAILABLE",
+            },
+        )
+
+
+class AIServiceUnavailableError(GroqUnavailableError):
+    """Deprecated alias kept for backward compatibility with older callers."""
+
+
 def to_error_response(error: AppError) -> JSONResponse:
     """Convert an AppError into a JSON error response."""
+    body: dict = {"code": error.code, "message": error.message}
+    if error.details:
+        body.update(error.details)
     return JSONResponse(
         status_code=error.status_code,
-        content={"error": {"code": error.code, "message": error.message}},
+        content={"error": body},
     )
 
 
@@ -78,6 +126,22 @@ def register_exception_handlers(app: FastAPI) -> None:
                     "code": "validation_error",
                     "message": "The request failed validation.",
                     "details": jsonable_encoder(exc.errors()),
+                }
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def handle_unexpected_error(
+        _request: Request, exc: Exception
+    ) -> JSONResponse:
+        # Do not leak stack traces or upstream provider error bodies to the
+        # client; the server log keeps the full picture.
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": "internal_error",
+                    "message": "Something went wrong while processing the request. Please try again.",
                 }
             },
         )

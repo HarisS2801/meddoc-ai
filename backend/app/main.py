@@ -10,7 +10,7 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import documents, health
+from app.api.routes import chat, documents, health, review
 from app.core import exceptions
 from app.core.config import get_settings
 from app.core.logging import setup_logging
@@ -37,7 +37,11 @@ def create_app() -> FastAPI:
 
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_origins=[
+            origin.strip()
+            for origin in settings.cors_origins.split(",")
+            if origin.strip()
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -46,6 +50,8 @@ def create_app() -> FastAPI:
     exceptions.register_exception_handlers(application)
     application.include_router(health.router, prefix="/api")
     application.include_router(documents.router, prefix="/api")
+    application.include_router(chat.router, prefix="/api")
+    application.include_router(review.router, prefix="/api")
 
     return application
 

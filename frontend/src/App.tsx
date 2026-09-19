@@ -1,22 +1,32 @@
+import AssistantPage from "./components/AssistantPage";
+
 function App() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center gap-6 p-8">
-      <div className="text-center space-y-3">
-        <h1 className="text-4xl font-bold tracking-tight text-white">
-          MedDoc AI
-        </h1>
-        <p className="text-lg text-slate-400">
-          AI Healthcare Document Assistant
-        </p>
-        <p className="text-sm text-slate-500 max-w-md mx-auto">
-          Educational prototype — not for clinical use. Do not upload real
-          patient data.
-        </p>
-      </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-lg font-bold text-white shadow-lg shadow-teal-900/40">
+              M
+            </div>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-white">
+                MedDoc AI
+              </h1>
+              <p className="text-xs text-slate-400">
+                Your intelligent medical document assistant
+              </p>
+            </div>
+          </div>
+          <p className="ml-auto hidden text-xs text-slate-500 md:block">
+            Educational prototype — not for clinical use.
+          </p>
+        </div>
+      </header>
 
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-center">
-        <p className="text-sm text-slate-300 font-mono">Phase 1 ✓ Backend connected</p>
-      </div>
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+        <AssistantPage />
+      </main>
     </div>
   );
 }

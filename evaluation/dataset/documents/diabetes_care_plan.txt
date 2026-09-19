@@ -1,0 +1,35 @@
+SYNTHETIC DOCUMENT - DIABETES CARE PLAN
+Fictional patient record. Contains no real patient data.
+
+PATIENT: Avery Morgan (fictional)
+MRN: 1001
+DIAGNOSIS: Type 2 diabetes mellitus (synthetic)
+DOCUMENT DATE: 2026-09-15
+
+CARE PLAN GOALS
+- Target fasting glucose: 80-130 mg/dL
+- Target A1c: below 7.0%
+- Blood pressure at or below 140/90 mmHg
+- Regular activity: at least 30 minutes, five days per week
+
+MEDICATIONS
+- Metformin 500 mg twice daily with meals
+- Take the evening dose no later than 9 PM
+
+FOOT CARE
+- Inspect feet daily for cuts, blisters, or colour changes
+- Wear properly fitted shoes and report any numbness to the care team
+
+SCREENING SCHEDULE
+- Dilated eye examination: once per year
+- Kidney function test with urine albumin: once per year
+- Foot examination by the care team: at every routine visit
+
+FOLLOW-UP
+- Next routine follow-up appointment: 2026-12-15
+- Bring a two-day food and activity diary to the appointment
+
+EMERGENCY CONTACTS
+- If blood glucose reading is below 70 mg/dL with symptoms, treat with 15
+  grams of fast-acting carbohydrate and recheck after 15 minutes.
+- Contact the care team for readings above 300 mg/dL twice in one day.

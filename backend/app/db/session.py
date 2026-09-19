@@ -44,6 +44,85 @@ def enable_sqlite_foreign_keys(db_engine: Engine) -> None:
 enable_sqlite_foreign_keys(engine)
 
 
+def _ensure_conversation_document_column(bind_engine) -> None:
+    """Backfill ``conversations.document_id`` on legacy databases.
+
+    ``create_all`` never alters existing tables, so databases created
+    before the document-scoped workspace feature get the new column here.
+    Failing to backfill is non-fatal: chat still works, just without
+    workspace-to-document binding for pre-existing rows.
+    """
+
+    def _migrate(connection) -> None:
+        table_names = {
+            name
+            for name in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).scalars()
+        }
+        if "conversations" not in table_names:
+            return
+        columns = set()
+        for _cid, name, *_rest in connection.exec_driver_sql(
+            "PRAGMA table_info(conversations)"
+        ).all():
+            if name:
+                columns.add(name)
+        if "document_id" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE conversations ADD COLUMN document_id INTEGER "
+                "REFERENCES documents(id) ON DELETE SET NULL"
+            )
+
+    try:
+        with bind_engine.begin() as connection:
+            _migrate(connection)
+    except Exception:
+        logger.warning(
+            "Could not backfill conversations.document_id; continuing without it.",
+            exc_info=True,
+        )
+
+
+def _ensure_summary_version_column(bind_engine) -> None:
+    """Backfill ``summaries.version`` on legacy databases.
+
+    ``create_all`` never alters existing tables, so databases created
+    before the provider metadata change lack the ``version`` column. Old
+    rows get a placeholder so reads stay safe; new summaries always store
+    the current ``SUMMARY_CACHE_VERSION``.
+    """
+
+    def _migrate(connection) -> None:
+        table_names = {
+            name
+            for name in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).scalars()
+        }
+        if "summaries" not in table_names:
+            return
+        columns = set()
+        for _cid, name, *_rest in connection.exec_driver_sql(
+            "PRAGMA table_info(summaries)"
+        ).all():
+            if name:
+                columns.add(name)
+        if "version" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE summaries ADD COLUMN version VARCHAR(64) DEFAULT 'legacy'"
+            )
+
+    try:
+        with bind_engine.begin() as connection:
+            _migrate(connection)
+    except Exception:
+        logger.warning(
+            "Could not backfill summaries.version; continuing without it.",
+            exc_info=True,
+        )
+
+
 def init_db() -> None:
     """Create every table (if it doesn't exist) and ensure data dirs exist.
 
@@ -61,4 +140,6 @@ def init_db() -> None:
     settings.chroma_dir.mkdir(parents=True, exist_ok=True)
 
     Base.metadata.create_all(bind=engine)
+    _ensure_conversation_document_column(engine)
+    _ensure_summary_version_column(engine)
     logger.info("Database tables initialised at %s", db_file)

@@ -10,10 +10,11 @@ from app.core.enums import (
     ReviewStatus,
 )
 from app.db.models import Document
-from app.schemas.chat import ChatRequest
+from app.schemas.chat import ChatRequest, ChatResponse
 from app.schemas.document import DocumentOut
 from app.schemas.extraction import ExtractionRequest, ExtractionResult
 from app.schemas.review import ReviewDecisionRequest, ReviewItemOut
+from app.schemas.summarization import SummaryResponse
 
 
 class TestChatRequest:
@@ -58,6 +59,43 @@ class TestDocumentOut:
         assert out.id == doc.id
         assert out.status == DocumentStatus.PROCESSED
         assert out.filename == "test.pdf"
+
+
+class TestChatResponse:
+    def test_defaults_are_groq_and_success(self):
+        resp = ChatResponse(
+            conversation_id=1,
+            answer="Based on the uploaded document\u2026",
+            sources=[],
+            review_recommended=False,
+        )
+        assert resp.provider_used == "groq"
+        assert resp.model_used == ""
+        assert resp.generation_status == "success"
+
+    def test_optional_fields_roundtrip(self):
+        resp = ChatResponse(
+            conversation_id=2,
+            answer="a",
+            sources=[],
+            review_recommended=True,
+            provider_used="groq",
+            model_used="llama-3.3-70b-versatile",
+            generation_status="success",
+        )
+        assert resp.model_used == "llama-3.3-70b-versatile"
+
+
+class TestSummaryResponse:
+    def test_defaults(self):
+        resp = SummaryResponse(document_id=1, summary="s", source_pages=[1])
+        assert resp.document_type == "Medical Report"
+        assert resp.notice is None
+        assert resp.structured is None
+        assert resp.provider_used == "groq"
+        assert resp.model_used == ""
+        assert resp.generation_status == "success"
+        assert resp.cached is False
 
 
 class TestExtractionRequest:

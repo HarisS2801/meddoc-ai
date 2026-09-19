@@ -16,6 +16,11 @@ class Conversation(Base):
     __tablename__ = "conversations"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # The document this chat workspace is scoped to. ``NULL`` on legacy
+    # conversations created before document binding existed.
+    document_id: Mapped[int | None] = mapped_column(
+        ForeignKey("documents.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     title: Mapped[str] = mapped_column(String(255), default="New conversation")
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc)

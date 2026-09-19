@@ -10,6 +10,15 @@ class TestCleanText:
     def test_strips_control_characters(self):
         assert clean_text("a\x00b\x1fc") == "abc"
 
+    def test_removes_pdf_glyph_artifacts(self):
+        assert clean_text("Case:/g3/g3MD/g88209/g882") == "Case: MD"
+
+    def test_glyph_artifacts_become_single_spaces(self):
+        assert clean_text("The/g3patient/g3was/g3seen") == "The patient was seen"
+
+    def test_glyph_artifacts_collapse_with_whitespace(self):
+        assert clean_text("a   /g3   /g3   b") == "a b"
+
     def test_collapses_runs_of_spaces(self):
         assert clean_text("a    b\t\t c") == "a b c"
 

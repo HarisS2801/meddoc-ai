@@ -1,0 +1,32 @@
+SYNTHETIC DOCUMENT - ADULT IMMUNIZATION SCHEDULE
+Educational reference material. Contains general, widely published
+immunization guidance reformulated for synthetic training data.
+
+INFLUENZA
+- Annual influenza vaccination is recommended for all adults each year.
+
+TDAP
+- A single Tdap booster is recommended every 10 years for all adults.
+- Pregnant individuals should receive Tdap during each pregnancy.
+
+ZOSTER (SHINGRIX)
+- Recommended for all adults aged 50 years and older.
+- Two doses given 2 to 6 months apart.
+- Adults who received the older live zoster vaccine should be
+  revaccinated with Shingrix.
+
+PNEUMOCOCCAL
+- Recommended for all adults aged 65 years and older.
+- Also recommended for adults with certain chronic conditions regardless
+  of age.
+
+COVID-19
+- Updated COVID-19 vaccine doses are recommended as indicated for age and
+  risk group.
+
+HEPATITIS B
+- Recommended for adults with diabetes aged 19 through 59 years.
+
+CONSULT
+- Ask the care team or a pharmacist if you have questions about which
+  vaccines apply to you.

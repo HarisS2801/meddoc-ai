@@ -15,6 +15,7 @@ from app.schemas.extraction import (
     ExtractionResult,
 )
 from app.schemas.review import ReviewDecisionRequest, ReviewItemOut
+from app.schemas.summarization import SummaryResponse
 
 __all__ = [
     "ChatRequest",
@@ -30,4 +31,5 @@ __all__ = [
     "ReviewDecisionRequest",
     "ReviewItemOut",
     "SourceRef",
+    "SummaryResponse",
 ]

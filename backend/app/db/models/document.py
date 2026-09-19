@@ -36,6 +36,12 @@ class Document(Base):
         passive_deletes=True,
     )
 
+    summaries: Mapped[list["Summary"]] = relationship(  # noqa: F821
+        back_populates="document",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Document id={self.id} filename={self.filename!r}>"
 

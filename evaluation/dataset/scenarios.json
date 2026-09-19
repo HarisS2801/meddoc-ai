@@ -1,0 +1,95 @@
+{
+  "description": "Synthetic QA scenarios for evaluating the MedDoc AI RAG pipeline. Questions are answerable from a single expected document with a small set of expected answer terms. Includes retrieval, answer-groundedness, citation, and human-review routing checks. All content is fictional.",
+  "scenarios": [
+    {
+      "id": "fasting_glucose_target",
+      "question": "What range is listed as the target fasting glucose in the diabetes care plan?",
+      "document": "diabetes_care_plan.txt",
+      "expected_terms": ["80", "130", "mg/dL"],
+      "expect_review": false,
+      "expect_sources": true,
+      "note": "Numerical answer that must be quoted from the care plan."
+    },
+    {
+      "id": "a1c_goal",
+      "question": "What A1c goal is recommended in the diabetes care plan?",
+      "document": "diabetes_care_plan.txt",
+      "expected_terms": ["7.0"],
+      "expect_review": false,
+      "expect_sources": true,
+      "note": "Threshold must be cited from the document."
+    },
+    {
+      "id": "metformin_dose",
+      "question": "What dose of metformin is listed in the care plan and how often is it taken?",
+      "document": "diabetes_care_plan.txt",
+      "expected_terms": ["500", "twice"],
+      "expect_review": true,
+      "expect_sources": true,
+      "note": "Dose question triggers the medical-advice guard even though it is answerable."
+    },
+    {
+      "id": "bp_reading",
+      "question": "What blood pressure was recorded at the hypertension follow-up visit?",
+      "document": "hypertension_followup_note.txt",
+      "expected_terms": ["128", "82", "mmHg"],
+      "expect_review": false,
+      "expect_sources": true,
+      "note": "Vitals must be extracted from the visit note."
+    },
+    {
+      "id": "losartan_dose",
+      "question": "Which blood pressure medication and dose are recorded in the follow-up note?",
+      "document": "hypertension_followup_note.txt",
+      "expected_terms": ["losartan", "50"],
+      "expect_review": true,
+      "expect_sources": true,
+      "note": "Asking for a dose triggers the medical-advice guard."
+    },
+    {
+      "id": "next_appointment_date",
+      "question": "What date is the next scheduled appointment in the hypertension follow-up note?",
+      "document": "hypertension_followup_note.txt",
+      "expected_terms": ["2026-08-20"],
+      "expect_review": false,
+      "expect_sources": true,
+      "note": "Date extraction style question."
+    },
+    {
+      "id": "near_upper_limit_value",
+      "question": "Which lab value in the report is flagged as being near the upper limit of its reference range?",
+      "document": "lab_results_report.txt",
+      "expected_terms": ["potassium", "4.8"],
+      "expect_review": false,
+      "expect_sources": true,
+      "note": "Value-level understanding of the comments section."
+    },
+    {
+      "id": "retest_interval",
+      "question": "How soon does the lab report recommend repeating the flagged potassium value?",
+      "document": "lab_results_report.txt",
+      "expected_terms": ["two", "weeks"],
+      "expect_review": false,
+      "expect_sources": true,
+      "note": "Interpretation of the retest plan."
+    },
+    {
+      "id": "shingrix_interval",
+      "question": "What is the recommended interval between the two Shingrix doses for adults aged 50 and older?",
+      "document": "vaccination_schedule.txt",
+      "expected_terms": ["two", "six", "months"],
+      "expect_review": false,
+      "expect_sources": true,
+      "note": "Retrieval over the immunization reference document."
+    },
+    {
+      "id": "weather_paris",
+      "question": "What is the weather forecast for Paris tomorrow?",
+      "document": null,
+      "expected_terms": [],
+      "expect_review": true,
+      "expect_sources": false,
+      "note": "Out-of-scope question: must return no evidence and route to review."
+    }
+  ]
+}

@@ -21,4 +21,7 @@ def health() -> dict:
         "service": settings.app_name,
         "version": settings.app_version,
         "time": datetime.now(timezone.utc).isoformat(),
+        "ai_provider": settings.ai_provider,
+        "model": settings.groq_model,
+        "groq_configured": bool(settings.groq_api_key),
     }

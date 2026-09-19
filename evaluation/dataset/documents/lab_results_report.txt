@@ -1,0 +1,24 @@
+SYNTHETIC DOCUMENT - LABORATORY RESULTS REPORT
+Fictional patient record. Contains no real patient data.
+
+PATIENT: Jordan Lee (fictional)
+MRN: 1003
+LABORATORY ACCESSIONS DATE: 2026-09-01
+
+RESULTS (synthetic)
+- Fasting glucose: 98 mg/dL (reference 70-99)
+- Hemoglobin A1c: 6.1% (reference below 5.7; prediabetes range 5.7-6.4)
+- Creatinine: 1.1 mg/dL (reference 0.6-1.3)
+- eGFR: 72 mL/min/1.73 m2 (reference 60 or greater)
+- Potassium: 4.8 mmol/L (reference 3.5-5.0)
+- LDL cholesterol: 118 mg/dL (reference below 130)
+
+COMMENTS
+- Potassium is near the upper limit of the reference range. No symptoms
+  were reported. A repeat potassium test is recommended in two weeks to
+  confirm stability.
+- All other values are within the normal reference ranges.
+
+RETEST PLAN
+- Repeat potassium: 2026-09-15
+- Full lipid panel: with the next annual visit

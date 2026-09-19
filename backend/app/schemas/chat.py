@@ -23,6 +23,9 @@ class ChatResponse(BaseModel):
     answer: str
     sources: list[SourceRef]
     review_recommended: bool
+    provider_used: str = "groq"
+    model_used: str = ""
+    generation_status: str = "success"
 
 
 class MessageOut(BaseModel):

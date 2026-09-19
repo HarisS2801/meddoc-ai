@@ -1,0 +1,337 @@
+{
+  "run_id": "20260917-080904-c844ea",
+  "created_at": "2026-09-17T08:09:10.392959+00:00",
+  "description": "Synthetic QA scenarios for evaluating the MedDoc AI RAG pipeline. Questions are answerable from a single expected document with a small set of expected answer terms. Includes retrieval, answer-groundedness, citation, and human-review routing checks. All content is fictional.",
+  "mode": "mock",
+  "total_scenarios": 10,
+  "evaluated_scenarios": 10,
+  "metrics": {
+    "retrieval_precision": 0.8889,
+    "retrieval_recall": 0.8889,
+    "answer_correct_rate": 0.5,
+    "citation_correct_rate": 1.0,
+    "review_routing_accuracy": 1.0,
+    "mean_latency_ms": 48.8,
+    "total_estimated_tokens_in": 183,
+    "total_estimated_tokens_out": 336
+  },
+  "scenarios": [
+    {
+      "scenario_id": "fasting_glucose_target",
+      "question": "What range is listed as the target fasting glucose in the diabetes care plan?",
+      "expected_document": "diabetes_care_plan.txt",
+      "expected_doc_ids": [
+        1
+      ],
+      "retrieved_doc_ids": [
+        1
+      ],
+      "retrieved_doc_names": [
+        "diabetes_care_plan.txt"
+      ],
+      "answer": "Based on the uploaded documents: \"- Target fasting glucose: 80-130 mg/dL\" [Source 1] (diabetes_care_plan.txt, page 1).",
+      "sources": [
+        {
+          "document_id": 1,
+          "filename": "diabetes_care_plan.txt",
+          "page_number": 1,
+          "chunk_text": "SYNTHETIC DOCUMENT - DIABETES CARE PLAN\nFictional patient record. Contains no real patient data. PATIENT: Avery Morgan (fictional)\nMRN: 1001\nDIAGNOSIS: Type 2 diabetes mellitus (synthetic)\nDOCUMENT DATE: 2026-09-15 CARE PLAN GOALS\n- Target fasting glucose: 80-130 mg/dL\n- Target A1c: below 7.0%\n- Blood pressure at or below 140/90 mmHg\n- Regular activity: at least 30 minutes, five days per week MEDICATIONS\n- Metformin 500 mg twice daily with meals\n- Take the evening dose no later than 9 PM FOOT CARE\n- Inspect feet daily for cuts, blisters, or colour changes\n- Wear properly fitted shoes and report any numbness to the care team"
+        }
+      ],
+      "review_recommended": false,
+      "review_expected": false,
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "answer_correct": true,
+      "citation_correct": true,
+      "routing_correct": true,
+      "latency_ms": 50,
+      "tokens_in": 19,
+      "tokens_out": 29
+    },
+    {
+      "scenario_id": "a1c_goal",
+      "question": "What A1c goal is recommended in the diabetes care plan?",
+      "expected_document": "diabetes_care_plan.txt",
+      "expected_doc_ids": [
+        1
+      ],
+      "retrieved_doc_ids": [
+        4
+      ],
+      "retrieved_doc_names": [
+        "vaccination_schedule.txt"
+      ],
+      "answer": "Based on the uploaded documents: \"- Recommended for adults with diabetes aged 19 through 59 years. CONSULT\" [Source 1] (vaccination_schedule.txt, page 1).",
+      "sources": [
+        {
+          "document_id": 4,
+          "filename": "vaccination_schedule.txt",
+          "page_number": 1,
+          "chunk_text": "for all adults aged 65 years and older.\n- Also recommended for adults with certain chronic conditions regardless\nof age. COVID-19\n- Updated COVID-19 vaccine doses are recommended as indicated for age and\nrisk group. HEPATITIS B\n- Recommended for adults with diabetes aged 19 through 59 years. CONSULT\n- Ask the care team or a pharmacist if you have questions about which\nvaccines apply to you."
+        }
+      ],
+      "review_recommended": false,
+      "review_expected": false,
+      "retrieval_precision": 0.0,
+      "retrieval_recall": 0.0,
+      "answer_correct": false,
+      "citation_correct": true,
+      "routing_correct": true,
+      "latency_ms": 35,
+      "tokens_in": 13,
+      "tokens_out": 38
+    },
+    {
+      "scenario_id": "metformin_dose",
+      "question": "What dose of metformin is listed in the care plan and how often is it taken?",
+      "expected_document": "diabetes_care_plan.txt",
+      "expected_doc_ids": [
+        1
+      ],
+      "retrieved_doc_ids": [
+        1
+      ],
+      "retrieved_doc_names": [
+        "diabetes_care_plan.txt"
+      ],
+      "answer": "Based on the uploaded documents: \"- Take the evening dose no later than 9 PM FOOT CARE\" [Source 1] (diabetes_care_plan.txt, page 1).",
+      "sources": [
+        {
+          "document_id": 1,
+          "filename": "diabetes_care_plan.txt",
+          "page_number": 1,
+          "chunk_text": "SYNTHETIC DOCUMENT - DIABETES CARE PLAN\nFictional patient record. Contains no real patient data. PATIENT: Avery Morgan (fictional)\nMRN: 1001\nDIAGNOSIS: Type 2 diabetes mellitus (synthetic)\nDOCUMENT DATE: 2026-09-15 CARE PLAN GOALS\n- Target fasting glucose: 80-130 mg/dL\n- Target A1c: below 7.0%\n- Blood pressure at or below 140/90 mmHg\n- Regular activity: at least 30 minutes, five days per week MEDICATIONS\n- Metformin 500 mg twice daily with meals\n- Take the evening dose no later than 9 PM FOOT CARE\n- Inspect feet daily for cuts, blisters, or colour changes\n- Wear properly fitted shoes and report any numbness to the care team"
+        }
+      ],
+      "review_recommended": true,
+      "review_expected": true,
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "answer_correct": false,
+      "citation_correct": true,
+      "routing_correct": true,
+      "latency_ms": 50,
+      "tokens_in": 19,
+      "tokens_out": 33
+    },
+    {
+      "scenario_id": "bp_reading",
+      "question": "What blood pressure was recorded at the hypertension follow-up visit?",
+      "expected_document": "hypertension_followup_note.txt",
+      "expected_doc_ids": [
+        2
+      ],
+      "retrieved_doc_ids": [
+        2
+      ],
+      "retrieved_doc_names": [
+        "hypertension_followup_note.txt"
+      ],
+      "answer": "Based on the uploaded documents: \"- Blood pressure: 128/82 mmHg (seated, right arm)\" [Source 1] (hypertension_followup_note.txt, page 1).",
+      "sources": [
+        {
+          "document_id": 2,
+          "filename": "hypertension_followup_note.txt",
+          "page_number": 1,
+          "chunk_text": "SYNTHETIC DOCUMENT - HYPERTENSION FOLLOW-UP NOTE\nFictional patient record. Contains no real patient data. PATIENT: Sam Rivera (fictional)\nMRN: 1002\nDATE OF VISIT: 2026-05-20 VITAL SIGNS\n- Blood pressure: 128/82 mmHg (seated, right arm)\n- Heart rate: 72 bpm\n- Weight: 84.5 kg MEDICATIONS\n- Losartan 50 mg once daily\n- Continue the current dose; report any dizziness or swelling LABORATORY ORDERS\n- Basic metabolic panel with potassium: complete blood count\n- Blood draw scheduled: 2026-06-20 PLAN\n- Recheck blood pressure in three months at the next appointment\n- Next scheduled appointment: 2026-08-20\n- Encourage home blood pressure readings twice per week CLINIC CONTACT\n- Phone: (555) 010-2002 (synthetic)\n- Refill requests should be submitted 5 business days before running out."
+        }
+      ],
+      "review_recommended": false,
+      "review_expected": false,
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "answer_correct": true,
+      "citation_correct": true,
+      "routing_correct": true,
+      "latency_ms": 48,
+      "tokens_in": 17,
+      "tokens_out": 34
+    },
+    {
+      "scenario_id": "losartan_dose",
+      "question": "Which blood pressure medication and dose are recorded in the follow-up note?",
+      "expected_document": "hypertension_followup_note.txt",
+      "expected_doc_ids": [
+        2
+      ],
+      "retrieved_doc_ids": [
+        2
+      ],
+      "retrieved_doc_names": [
+        "hypertension_followup_note.txt"
+      ],
+      "answer": "Based on the uploaded documents: \"- Blood pressure: 128/82 mmHg (seated, right arm)\" [Source 1] (hypertension_followup_note.txt, page 1).",
+      "sources": [
+        {
+          "document_id": 2,
+          "filename": "hypertension_followup_note.txt",
+          "page_number": 1,
+          "chunk_text": "SYNTHETIC DOCUMENT - HYPERTENSION FOLLOW-UP NOTE\nFictional patient record. Contains no real patient data. PATIENT: Sam Rivera (fictional)\nMRN: 1002\nDATE OF VISIT: 2026-05-20 VITAL SIGNS\n- Blood pressure: 128/82 mmHg (seated, right arm)\n- Heart rate: 72 bpm\n- Weight: 84.5 kg MEDICATIONS\n- Losartan 50 mg once daily\n- Continue the current dose; report any dizziness or swelling LABORATORY ORDERS\n- Basic metabolic panel with potassium: complete blood count\n- Blood draw scheduled: 2026-06-20 PLAN\n- Recheck blood pressure in three months at the next appointment\n- Next scheduled appointment: 2026-08-20\n- Encourage home blood pressure readings twice per week CLINIC CONTACT\n- Phone: (555) 010-2002 (synthetic)\n- Refill requests should be submitted 5 business days before running out."
+        }
+      ],
+      "review_recommended": true,
+      "review_expected": true,
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "answer_correct": false,
+      "citation_correct": true,
+      "routing_correct": true,
+      "latency_ms": 81,
+      "tokens_in": 19,
+      "tokens_out": 34
+    },
+    {
+      "scenario_id": "next_appointment_date",
+      "question": "What date is the next scheduled appointment in the hypertension follow-up note?",
+      "expected_document": "hypertension_followup_note.txt",
+      "expected_doc_ids": [
+        2
+      ],
+      "retrieved_doc_ids": [
+        2
+      ],
+      "retrieved_doc_names": [
+        "hypertension_followup_note.txt"
+      ],
+      "answer": "Based on the uploaded documents: \"- Next scheduled appointment: 2026-08-20\" [Source 1] (hypertension_followup_note.txt, page 1).",
+      "sources": [
+        {
+          "document_id": 2,
+          "filename": "hypertension_followup_note.txt",
+          "page_number": 1,
+          "chunk_text": "SYNTHETIC DOCUMENT - HYPERTENSION FOLLOW-UP NOTE\nFictional patient record. Contains no real patient data. PATIENT: Sam Rivera (fictional)\nMRN: 1002\nDATE OF VISIT: 2026-05-20 VITAL SIGNS\n- Blood pressure: 128/82 mmHg (seated, right arm)\n- Heart rate: 72 bpm\n- Weight: 84.5 kg MEDICATIONS\n- Losartan 50 mg once daily\n- Continue the current dose; report any dizziness or swelling LABORATORY ORDERS\n- Basic metabolic panel with potassium: complete blood count\n- Blood draw scheduled: 2026-06-20 PLAN\n- Recheck blood pressure in three months at the next appointment\n- Next scheduled appointment: 2026-08-20\n- Encourage home blood pressure readings twice per week CLINIC CONTACT\n- Phone: (555) 010-2002 (synthetic)\n- Refill requests should be submitted 5 business days before running out."
+        }
+      ],
+      "review_recommended": false,
+      "review_expected": false,
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "answer_correct": true,
+      "citation_correct": true,
+      "routing_correct": true,
+      "latency_ms": 36,
+      "tokens_in": 19,
+      "tokens_out": 32
+    },
+    {
+      "scenario_id": "near_upper_limit_value",
+      "question": "Which lab value in the report is flagged as being near the upper limit of its reference range?",
+      "expected_document": "lab_results_report.txt",
+      "expected_doc_ids": [
+        3
+      ],
+      "retrieved_doc_ids": [
+        3
+      ],
+      "retrieved_doc_names": [
+        "lab_results_report.txt"
+      ],
+      "answer": "Based on the uploaded documents: \"- Potassium is near the upper limit of the reference range. No symptoms\" [Source 1] (lab_results_report.txt, page 1).",
+      "sources": [
+        {
+          "document_id": 3,
+          "filename": "lab_results_report.txt",
+          "page_number": 1,
+          "chunk_text": "SYNTHETIC DOCUMENT - LABORATORY RESULTS REPORT\nFictional patient record. Contains no real patient data. PATIENT: Jordan Lee (fictional)\nMRN: 1003\nLABORATORY ACCESSIONS DATE: 2026-09-01 RESULTS (synthetic)\n- Fasting glucose: 98 mg/dL (reference 70-99)\n- Hemoglobin A1c: 6.1% (reference below 5.7; prediabetes range 5.7-6.4)\n- Creatinine: 1.1 mg/dL (reference 0.6-1.3)\n- eGFR: 72 mL/min/1.73 m2 (reference 60 or greater)\n- Potassium: 4.8 mmol/L (reference 3.5-5.0)\n- LDL cholesterol: 118 mg/dL (reference below 130) COMMENTS\n- Potassium is near the upper limit of the reference range. No symptoms\nwere reported. A repeat potassium test is recommended in two weeks to\nconfirm stability.\n- All other values are within the normal reference ranges."
+        }
+      ],
+      "review_recommended": false,
+      "review_expected": false,
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "answer_correct": true,
+      "citation_correct": true,
+      "routing_correct": true,
+      "latency_ms": 34,
+      "tokens_in": 23,
+      "tokens_out": 37
+    },
+    {
+      "scenario_id": "retest_interval",
+      "question": "How soon does the lab report recommend repeating the flagged potassium value?",
+      "expected_document": "lab_results_report.txt",
+      "expected_doc_ids": [
+        3
+      ],
+      "retrieved_doc_ids": [
+        3
+      ],
+      "retrieved_doc_names": [
+        "lab_results_report.txt"
+      ],
+      "answer": "Based on the uploaded documents: \"- Potassium: 4.8 mmol/L (reference 3.5-5.0)\" [Source 1] (lab_results_report.txt, page 1).",
+      "sources": [
+        {
+          "document_id": 3,
+          "filename": "lab_results_report.txt",
+          "page_number": 1,
+          "chunk_text": "SYNTHETIC DOCUMENT - LABORATORY RESULTS REPORT\nFictional patient record. Contains no real patient data. PATIENT: Jordan Lee (fictional)\nMRN: 1003\nLABORATORY ACCESSIONS DATE: 2026-09-01 RESULTS (synthetic)\n- Fasting glucose: 98 mg/dL (reference 70-99)\n- Hemoglobin A1c: 6.1% (reference below 5.7; prediabetes range 5.7-6.4)\n- Creatinine: 1.1 mg/dL (reference 0.6-1.3)\n- eGFR: 72 mL/min/1.73 m2 (reference 60 or greater)\n- Potassium: 4.8 mmol/L (reference 3.5-5.0)\n- LDL cholesterol: 118 mg/dL (reference below 130) COMMENTS\n- Potassium is near the upper limit of the reference range. No symptoms\nwere reported. A repeat potassium test is recommended in two weeks to\nconfirm stability.\n- All other values are within the normal reference ranges."
+        }
+      ],
+      "review_recommended": false,
+      "review_expected": false,
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "answer_correct": false,
+      "citation_correct": true,
+      "routing_correct": true,
+      "latency_ms": 47,
+      "tokens_in": 19,
+      "tokens_out": 30
+    },
+    {
+      "scenario_id": "shingrix_interval",
+      "question": "What is the recommended interval between the two Shingrix doses for adults aged 50 and older?",
+      "expected_document": "vaccination_schedule.txt",
+      "expected_doc_ids": [
+        4
+      ],
+      "retrieved_doc_ids": [
+        4
+      ],
+      "retrieved_doc_names": [
+        "vaccination_schedule.txt"
+      ],
+      "answer": "Based on the uploaded documents: \"- Recommended for all adults aged 50 years and older.\" [Source 1] (vaccination_schedule.txt, page 1).",
+      "sources": [
+        {
+          "document_id": 4,
+          "filename": "vaccination_schedule.txt",
+          "page_number": 1,
+          "chunk_text": "SYNTHETIC DOCUMENT - ADULT IMMUNIZATION SCHEDULE\nEducational reference material. Contains general, widely published\nimmunization guidance reformulated for synthetic training data. INFLUENZA\n- Annual influenza vaccination is recommended for all adults each year. TDAP\n- A single Tdap booster is recommended every 10 years for all adults.\n- Pregnant individuals should receive Tdap during each pregnancy. ZOSTER (SHINGRIX)\n- Recommended for all adults aged 50 years and older.\n- Two doses given 2 to 6 months apart.\n- Adults who received the older live zoster vaccine should be\nrevaccinated with Shingrix. PNEUMOCOCCAL\n- Recommended for all adults aged 65 years and older.\n- Also recommended for adults with certain chronic conditions regardless\nof age."
+        }
+      ],
+      "review_recommended": false,
+      "review_expected": false,
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "answer_correct": false,
+      "citation_correct": true,
+      "routing_correct": true,
+      "latency_ms": 39,
+      "tokens_in": 23,
+      "tokens_out": 33
+    },
+    {
+      "scenario_id": "weather_paris",
+      "question": "What is the weather forecast for Paris tomorrow?",
+      "expected_document": null,
+      "expected_doc_ids": [],
+      "retrieved_doc_ids": [],
+      "retrieved_doc_names": [],
+      "answer": "I could not find information to answer that question in the uploaded documents. Consider rephrasing the question or uploading a relevant document.",
+      "sources": [],
+      "review_recommended": true,
+      "review_expected": true,
+      "retrieval_precision": null,
+      "retrieval_recall": null,
+      "answer_correct": true,
+      "citation_correct": true,
+      "routing_correct": true,
+      "latency_ms": 68,
+      "tokens_in": 12,
+      "tokens_out": 36
+    }
+  ]
+}

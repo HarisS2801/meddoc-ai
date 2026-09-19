@@ -5,6 +5,10 @@ import re
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _MULTI_SPACE = re.compile(r"[ \t\u00a0]{2,}")
 _MULTI_NEWLINE = re.compile(r"\n{3,}")
+# pypdf sometimes decodes spaces (and some mismapped glyph runs) as literal
+# PDF glyph-name references such as "/g3", "/g88209". They are artifacts of
+# subset fonts, not document content, so they are treated as plain spaces.
+_GLYPH_ARTIFACTS = re.compile(r"\s*/g\d+\s*")
 
 
 def clean_text(raw: str) -> str:
@@ -12,11 +16,13 @@ def clean_text(raw: str) -> str:
 
     - Converts CRLF/CR to plain LF
     - Removes non-printable control characters
+    - Replaces PDF glyph-name artifacts (e.g. ``/g3``) with a space
     - Trims each line, collapses runs of spaces/tabs (incl. non-breaking)
     - Keeps paragraph breaks (blank lines) intact
     """
     text = raw.replace("\r\n", "\n").replace("\r", "\n")
     text = _CONTROL_CHARS.sub("", text)
+    text = _GLYPH_ARTIFACTS.sub(" ", text)
     text = "\n".join(line.strip() for line in text.split("\n"))
     text = _MULTI_NEWLINE.sub("\n\n", text)
     text = _MULTI_SPACE.sub(" ", text)
