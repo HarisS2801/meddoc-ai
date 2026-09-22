@@ -22,6 +22,10 @@ class Document(Base):
     content_type: Mapped[str] = mapped_column(String(100))
     storage_path: Mapped[str] = mapped_column(String(1024))
     status: Mapped[str] = mapped_column(String(20), default="uploading")
+    # Report identity detected deterministically from the document's own
+    # header/title text during processing. Never guessed by an LLM.
+    report_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    report_header: Mapped[str | None] = mapped_column(String(255), nullable=True)
     extracted_text_len: Mapped[int] = mapped_column(Integer, default=0)
     page_count: Mapped[int] = mapped_column(Integer, default=0)
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)

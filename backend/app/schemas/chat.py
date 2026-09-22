@@ -26,6 +26,12 @@ class ChatResponse(BaseModel):
     provider_used: str = "groq"
     model_used: str = ""
     generation_status: str = "success"
+    # Deterministic routing label that produced this answer; one of the
+    # QuestionIntent values (e.g. document_type_query, medical_value_query).
+    intent: str | None = None
+    # Populated only when RETRIEVAL_DEBUG=true (structured retrieval
+    # telemetry); always None otherwise so production responses stay lean.
+    debug: dict | None = None
 
 
 class MessageOut(BaseModel):

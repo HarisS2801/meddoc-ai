@@ -41,19 +41,21 @@ export default function UploadSection({
   };
 
   return (
-    <section className="rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-900/70 to-slate-900/40 p-6 sm:p-8">
-      <div className="text-center">
+    <section className="flex h-full flex-col rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-900/70 to-slate-900/40 p-6">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-teal-300">
+        Upload Document
+      </h2>
+      <div className="mt-3 text-center">
         <p className="text-xs font-semibold uppercase tracking-widest text-teal-400">
           MedDoc AI
         </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        <h3 className="mt-1.5 text-xl font-bold tracking-tight text-white sm:text-2xl">
           Understand your medical reports
-        </h1>
-        <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-slate-400">
+        </h3>
+        <p className="mx-auto mt-2 text-sm leading-relaxed text-slate-400">
           Upload a cardiology report, blood test, lab results, prescription,
-          radiology report, or any other medical document. MedDoc AI reads the
-          whole document and turns it into a clear, plain-language summary —
-          then you can ask questions about it.
+          radiology report, or any other medical document to get a clear,
+          plain-language summary — then ask questions about it.
         </p>
       </div>
 
@@ -64,7 +66,7 @@ export default function UploadSection({
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
-        className={`mt-6 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 text-center transition ${
+        className={`mt-5 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-8 text-center transition ${
           dragging
             ? "border-teal-400 bg-teal-500/10"
             : disabled

@@ -1,6 +1,7 @@
 export type DocumentStatus = "uploading" | "processing" | "processed" | "failed";
 export type MessageRole = "user" | "assistant";
 export type ReviewStatus = "pending" | "approved" | "rejected";
+export type ViewId = "documents" | "summary" | "chat" | "history";
 
 export interface DocumentItem {
   id: number;

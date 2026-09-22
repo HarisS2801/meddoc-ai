@@ -1,15 +1,20 @@
 """RAG chat service: retrieval, answer generation, and review routing.
 
-Given a question, the service embeds it locally (lexical vectors), searches
-the vector store for the most relevant chunks (optionally restricted to a
-set of documents), and generates an answer grounded in those chunks via
-Groq. Every exchange is persisted as conversation messages, and risky or
+Given a question, the service retrieves document chunks with a hybrid
+keyword + lexical-vector retriever (strictly scoped to the selected
+documents), and generates an answer grounded in those chunks via Groq.
+Every exchange is persisted as conversation messages, and risky or
 low-confidence answers are routed to the human-review queue.
+
+The backend decides whether retrieval succeeded. An empty retrieval never
+reaches Groq: the user gets a controlled "not found in the uploaded
+report" response instead of a model inventing a missing context.
 
 If Groq is not configured or fails, a controlled ``GROQ_UNAVAILABLE`` error
 is raised; the chat never fakes an answer.
 """
 
+import json
 import re
 
 from sqlalchemy import select
@@ -25,15 +30,34 @@ from app.core.exceptions import (
     NotFoundError,
 )
 from app.core.logging import get_logger
-from app.db.models import Conversation, Document, Message, ReviewItem
+from app.db.models import Conversation, Document, DocumentChunk, Message, ReviewItem
 from app.schemas.chat import ChatRequest, ChatResponse, SourceRef
-from app.services import vector_store as vector_store_module
-from app.services.embedding_service import build_embedding_service
 from app.services.groq_service import SourceContext, build_chat_completer
+from app.services.intent_classifier import (
+    QuestionIntent,
+    classify_intent,
+    extract_abbreviation,
+)
+from app.services.retrieval import hybrid_retrieve
+from app.utils.report_detector import abbreviation_meaning
 
 logger = get_logger("chat")
 
 _HISTORY_LIMIT = 6
+
+# Controlled response when retrieval found nothing relevant in the selected
+# report. Note: review routing and the offline test double expect the exact
+# phrase "could not find information" so it stays in the message.
+_NO_CONTEXT_ANSWER = (
+    "I could not find information about that in the uploaded report. You can "
+    "ask me about the patient's details, test results, or other information "
+    "contained in the document."
+)
+
+# Deterministic answer when no selected document clearly names its type.
+_REPORT_TYPE_UNKNOWN_ANSWER = (
+    "The report type could not be determined from the uploaded document."
+)
 
 _MEDICAL_ADVICE_PATTERNS = (
     r"\bshould i\b",
@@ -146,25 +170,17 @@ def _resolve_documents(
 
 
 def _retrieve(
-    question: str, document_ids: list[int], settings
+    db: Session, question: str, document_ids: list[int], settings
 ) -> list[dict]:
-    """Return the relevant chunks, gated by the lexical relevance threshold.
+    """Return the relevant chunks for ``question``, scoped to the documents.
 
-    Embeddings are always the local lexical provider, so a single lexical
-    gate applies and only the single best passage is used for grounding.
+    Delegates to the hybrid retriever: keyword overlap (with medical-term
+    expansion) over the authoritative SQLite chunk text is the relevance
+    gate, and the lexical-vector cosine from ChromaDB only boosts ranking.
     """
-    if not document_ids:
-        return []
-
-    service = build_embedding_service()
-    query_embedding = service.embed_text(question)
-    hits = vector_store_module.get_vector_store().search(
-        query_embedding=query_embedding,
-        document_ids=document_ids,
-        top_k=settings.top_k,
+    return hybrid_retrieve(
+        db, question=question, document_ids=document_ids, settings=settings
     )
-    relevant = [hit for hit in hits if hit["distance"] <= settings.similarity_threshold]
-    return relevant[:1]
 
 
 def _conversation_history(db: Session, conversation: Conversation) -> list[dict[str, str]]:
@@ -179,52 +195,118 @@ def _conversation_history(db: Session, conversation: Conversation) -> list[dict[
     return [{"role": message.role, "content": message.content} for message in recent]
 
 
-def answer_question(db: Session, request: ChatRequest) -> ChatResponse:
-    """Answer a RAG question and persist the conversation exchange."""
-    settings = get_settings()
+# ---------------------------------------------------------------------------
+# Document-level routing helpers.
+#
+# Document-level questions (report type, abbreviation meaning) are answered
+# from the document's stored metadata — the type was detected during
+# processing from the source text, never guessed by an LLM. They are routed
+# deterministically and skip both vector retrieval and the similarity gate.
+# ---------------------------------------------------------------------------
 
-    documents = _resolve_documents(db, request.document_ids)
-    document_ids = [document.id for document in documents]
-    filenames = {document.id: document.filename for document in documents}
 
-    conversation = _get_or_create_conversation(
-        db, request.conversation_id, request.question, document_ids
+def _document_metadata_block(documents: list[Document]) -> str:
+    """Small document information section passed to Groq with any context.
+
+    Gives the model the report identity the document itself declared, so
+    content questions are answered with the document in scope.
+    """
+    if not documents:
+        return ""
+    lines = ["DOCUMENT INFORMATION:", "-" * 21]
+    for document in documents:
+        report_type = document.report_type or "Not determined from the document"
+        lines.append(f"Report Type: {report_type}")
+        lines.append(f"Document: {document.filename}")
+    lines.append("-" * 21)
+    return "\n".join(lines)
+
+
+def _document_noun(question: str) -> str:
+    """Pick the noun the question used ("report", "test", "examination")."""
+    lowered = question.lower()
+    if re.search(r"\btest\b", lowered):
+        return "test"
+    if re.search(r"\bexam", lowered):
+        return "examination"
+    return "report"
+
+
+def _report_type_abbreviation_matches(report_type: str | None, abbreviation: str) -> bool:
+    if not report_type:
+        return False
+    return f"({abbreviation.lower()})" in report_type.lower()
+
+
+def _metadata_answer(question: str, documents: list[Document], intent: str) -> str | None:
+    """Answer a document-level question directly from stored metadata.
+
+    Returns ``None`` when the question cannot be resolved from metadata so
+    the caller falls back to the RAG path.
+    """
+    known = [document for document in documents if document.report_type]
+
+    if intent == QuestionIntent.DOCUMENT_TYPE_QUERY:
+        if not known:
+            return _REPORT_TYPE_UNKNOWN_ANSWER
+        noun = _document_noun(question)
+        if len(known) == 1:
+            return f"This is a {known[0].report_type} {noun}."
+        parts = [f"{document.report_type} ({document.filename})" for document in known]
+        return "The uploaded documents are: " + ", ".join(parts) + "."
+
+    abbreviation = extract_abbreviation(question)
+    if not abbreviation:
+        return None
+    for document in known:
+        if _report_type_abbreviation_matches(document.report_type, abbreviation):
+            meaning = abbreviation_meaning(abbreviation)
+            if meaning:
+                return f"{abbreviation.upper()} stands for {meaning}."
+    return None
+
+
+def _leading_chunks_for_summary(
+    db: Session, document_ids: list[int], top_k: int
+) -> list[dict]:
+    """Fallback retrieval for summary questions: the document's leading chunks.
+
+    Summary questions need the whole document, not a single high-scoring
+    passage, so when keyword retrieval finds nothing we hand Groq the first
+    chunks instead of rejecting the question.
+    """
+    chunks = list(
+        db.scalars(
+            select(DocumentChunk)
+            .where(DocumentChunk.document_id.in_(document_ids))
+            .order_by(DocumentChunk.chunk_index)
+        ).all()
     )
+    hits = [
+        {
+            "chunk_id": str(chunk.id),
+            "document_id": chunk.document_id,
+            "page_number": chunk.page_number,
+            "text": chunk.content,
+            "matched_terms": [],
+            "keyword_matches": 0,
+            "vector_similarity": 0.0,
+            "score": 0.0,
+            "distance": None,
+        }
+        for chunk in chunks
+    ]
+    return hits[:top_k] if top_k else hits
 
-    try:
-        hits = _retrieve(request.question, document_ids, settings)
-        context = [
-            SourceContext(
-                document_id=hit["document_id"],
-                filename=filenames.get(hit["document_id"], "unknown"),
-                page_number=hit["page_number"],
-                text=hit["text"],
-            )
-            for hit in hits
-        ]
 
-        history = _conversation_history(db, conversation)
-        completer = build_chat_completer()
-        answer = completer.complete(
-            query=request.question,
-            context=context,
-            history=history,
-        )
-    except AppError:
-        # Controlled errors (e.g. Groq not configured) surface as-is.
-        raise
-    except Exception:
-        logger.warning(
-            "Groq failed to answer in conversation %d; returning 503.",
-            conversation.id,
-            exc_info=True,
-        )
-        raise GroqUnavailableError(GROQ_UNAVAILABLE_MESSAGE) from None
-
+def _persist_exchange(
+    db: Session, conversation: Conversation, question: str, answer: str
+) -> Message:
+    """Persist one user+assistant exchange and return the assistant message."""
     user_message = Message(
         conversation=conversation,
         role=MessageRole.USER.value,
-        content=request.question,
+        content=question,
     )
     assistant_message = Message(
         conversation=conversation,
@@ -233,6 +315,159 @@ def answer_question(db: Session, request: ChatRequest) -> ChatResponse:
     )
     db.add_all([user_message, assistant_message])
     db.commit()
+    return assistant_message
+
+
+def _log_routing_decision(
+    *,
+    conversation_id: int,
+    question: str,
+    documents: list[Document],
+    intent: str,
+    retrieval_required: bool,
+    groq_called: bool,
+    settings,
+) -> None:
+    """Emit the routing decision telemetry (never the full query in prod)."""
+    decision = {
+        "conversation_id": conversation_id,
+        "query": question if settings.retrieval_debug else f"<len={len(question)}>",
+        "intent": intent,
+        "document_ids": [document.id for document in documents],
+        "detected_report_type": {
+            document.id: document.report_type for document in documents
+        },
+        "report_header": {
+            document.id: document.report_header for document in documents
+        },
+        "retrieval_required": retrieval_required,
+        "groq_called": groq_called,
+    }
+    logger.info("routing_decision=%s", json.dumps(decision))
+
+
+def answer_question(db: Session, request: ChatRequest) -> ChatResponse:
+    """Answer a chat question and persist the conversation exchange.
+
+    Document-level questions (report type, abbreviation meaning) are
+    answered deterministically from the stored document metadata and never
+    hit the retrieval similarity gate. Content questions (medical values,
+    general, summary) retrieve the relevant chunks and answer via Groq.
+    """
+    settings = get_settings()
+
+    documents = _resolve_documents(db, request.document_ids)
+    document_ids = [document.id for document in documents]
+    filenames = {document.id: document.filename for document in documents}
+
+    intent = classify_intent(request.question)
+
+    conversation = _get_or_create_conversation(
+        db, request.conversation_id, request.question, document_ids
+    )
+
+    # ----- Document-level questions answered directly from metadata -----
+    if intent in {QuestionIntent.DOCUMENT_TYPE_QUERY, QuestionIntent.ABBREVIATION_QUERY}:
+        metadata_answer = _metadata_answer(request.question, documents, intent)
+        if metadata_answer is not None:
+            _log_routing_decision(
+                conversation_id=conversation.id,
+                question=request.question,
+                documents=documents,
+                intent=intent,
+                retrieval_required=False,
+                groq_called=False,
+                settings=settings,
+            )
+            _persist_exchange(db, conversation, request.question, metadata_answer)
+            debug_payload = _routing_debug_payload(
+                request,
+                documents,
+                intent=intent,
+                retrieval_required=False,
+                groq_called=False,
+                hits=[],
+                context_length=0,
+                settings=settings,
+            )
+            if debug_payload is not None:
+                logger.info("retrieval_debug=%s", json.dumps(debug_payload))
+            db.refresh(conversation)
+            return ChatResponse(
+                conversation_id=conversation.id,
+                answer=metadata_answer,
+                sources=[],
+                review_recommended=False,
+                provider_used="metadata",
+                model_used="document-metadata",
+                generation_status="success",
+                intent=intent,
+                debug=debug_payload,
+            )
+
+    # ----- Content questions: RAG retrieval -> Groq -----
+    try:
+        hits = _retrieve(db, request.question, document_ids, settings)
+    except AppError:
+        # Controlled errors (e.g. Groq not configured) surface as-is.
+        raise
+    except Exception:
+        logger.warning(
+            "Retrieval failed in conversation %d; returning 503.",
+            conversation.id,
+            exc_info=True,
+        )
+        raise GroqUnavailableError(GROQ_UNAVAILABLE_MESSAGE) from None
+
+    summary_fallback = False
+    if not hits and intent == QuestionIntent.DOCUMENT_SUMMARY_QUERY:
+        hits = _leading_chunks_for_summary(db, document_ids, settings.top_k)
+        summary_fallback = bool(hits)
+
+    context = [
+        SourceContext(
+            document_id=hit["document_id"],
+            filename=filenames.get(hit["document_id"], "unknown"),
+            page_number=hit["page_number"],
+            text=hit["text"],
+        )
+        for hit in hits
+    ]
+    context_length = sum(len(source.text) for source in context)
+    document_info = _document_metadata_block(documents)
+
+    if hits:
+        try:
+            history = _conversation_history(db, conversation)
+            completer = build_chat_completer()
+            answer = completer.complete(
+                query=request.question,
+                context=context,
+                history=history,
+                document_info=document_info,
+            )
+        except AppError:
+            # Controlled errors (e.g. Groq not configured) surface as-is.
+            raise
+        except Exception:
+            logger.warning(
+                "Groq failed to answer in conversation %d; returning 503.",
+                conversation.id,
+                exc_info=True,
+            )
+            raise GroqUnavailableError(GROQ_UNAVAILABLE_MESSAGE) from None
+        provider_used = completer.provider
+        model_used = completer.model
+        groq_called = True
+    else:
+        # The backend decides retrieval success: an empty retrieval never
+        # reaches Groq, so the model can never claim it has no context.
+        answer = _NO_CONTEXT_ANSWER
+        provider_used = "groq"
+        model_used = settings.groq_model
+        groq_called = False
+
+    assistant_message = _persist_exchange(db, conversation, request.question, answer)
 
     sources = [
         SourceRef(
@@ -246,37 +481,153 @@ def answer_question(db: Session, request: ChatRequest) -> ChatResponse:
 
     best_distance = hits[0]["distance"] if hits else None
     confidence_threshold = settings.similarity_threshold
-    flagged, reason = review_decision(
-        request.question,
-        has_context=bool(hits),
-        best_distance=best_distance,
-        similarity_threshold=confidence_threshold,
-    )
-    if flagged:
-        _create_review_item(
-            db,
-            assistant_message=assistant_message,
-            question=request.question,
-            document_ids=document_ids,
-            sources=[source.model_dump() for source in sources],
+    if summary_fallback:
+        # Summary questions intentionally hand the whole document to Groq;
+        # the leading chunks are not a weak-context signal.
+        flagged = False
+    else:
+        flagged, reason = review_decision(
+            request.question,
+            has_context=bool(hits),
             best_distance=best_distance,
-            reason=reason,
+            similarity_threshold=confidence_threshold,
         )
+        if flagged:
+            _create_review_item(
+                db,
+                assistant_message=assistant_message,
+                question=request.question,
+                document_ids=document_ids,
+                sources=[source.model_dump() for source in sources],
+                best_distance=best_distance,
+                reason=reason,
+            )
 
-    db.refresh(conversation)
-    logger.info(
-        "Answered question in conversation %d using %d source(s)",
-        conversation.id,
-        len(sources),
+    _log_routing_decision(
+        conversation_id=conversation.id,
+        question=request.question,
+        documents=documents,
+        intent=intent,
+        retrieval_required=True,
+        groq_called=groq_called,
+        settings=settings,
     )
+
+    debug_payload = _retrieval_debug_payload(
+        request,
+        documents,
+        hits,
+        context_length,
+        intent=intent,
+        retrieval_required=True,
+        groq_called=groq_called,
+        settings=settings,
+    )
+    if debug_payload is not None:
+        logger.info("retrieval_debug=%s", json.dumps(debug_payload))
+
+    logger.info(
+        "Answered question in conversation %d: documents=%s "
+        "query=%r indexed_chunks=%d retrieved=%d context_length=%d",
+        conversation.id,
+        document_ids,
+        len(request.question) if not settings.retrieval_debug else request.question,
+        sum(document.chunk_count for document in documents),
+        len(hits),
+        context_length,
+    )
+    db.refresh(conversation)
     return ChatResponse(
         conversation_id=conversation.id,
         answer=answer,
         sources=sources,
         review_recommended=flagged,
-        provider_used=completer.provider,
-        model_used=completer.model,
+        provider_used=provider_used,
+        model_used=model_used,
         generation_status="success",
+        intent=intent,
+        debug=debug_payload,
+    )
+
+
+def _routing_debug_payload(
+    request: ChatRequest,
+    documents: list[Document],
+    *,
+    intent: str,
+    retrieval_required: bool,
+    groq_called: bool,
+    hits: list[dict],
+    context_length: int,
+    settings,
+) -> dict | None:
+    """Structured routing telemetry, only when ``RETRIEVAL_DEBUG`` is on.
+
+    Never enabled in production; never contains API keys. Chunk text is
+    trimmed to a short preview so real medical documents are not dumped
+    into logs.
+    """
+    if not settings.retrieval_debug:
+        return None
+    return {
+        "intent": intent,
+        "document_ids": [document.id for document in documents],
+        "filenames": [document.filename for document in documents],
+        "detected_report_type": {
+            document.id: document.report_type for document in documents
+        },
+        "report_header": {
+            document.id: document.report_header for document in documents
+        },
+        "retrieval_required": retrieval_required,
+        "groq_called": groq_called,
+        "extracted_text_length": sum(
+            document.extracted_text_len for document in documents
+        ),
+        "num_chunks_indexed": sum(document.chunk_count for document in documents),
+        "query": request.question,
+        "num_retrieved_chunks": len(hits),
+        "retrieved_chunks": [
+            {
+                "chunk_id": hit["chunk_id"],
+                "document_id": hit["document_id"],
+                "page_number": hit["page_number"],
+                "score": hit["score"],
+                "distance": hit["distance"],
+                "matched_terms": hit.get("matched_terms", []),
+                "text_preview": hit["text"][:200],
+            }
+            for hit in hits
+        ],
+        "context_length": context_length,
+    }
+
+
+def _retrieval_debug_payload(
+    request: ChatRequest,
+    documents: list[Document],
+    hits: list[dict],
+    context_length: int,
+    *,
+    intent: str,
+    retrieval_required: bool,
+    groq_called: bool,
+    settings,
+) -> dict | None:
+    """Full retrieval telemetry for content questions (debug mode only).
+
+    Thin wrapper over :func:`_routing_debug_payload` that keeps the same
+    shape so one consumer parses both document-level and content answers.
+    """
+    return _routing_debug_payload(
+        request,
+        documents,
+        intent=intent,
+        retrieval_required=retrieval_required,
+        groq_called=groq_called,
+        hits=hits,
+        context_length=context_length,
+        settings=settings,
     )
 
 

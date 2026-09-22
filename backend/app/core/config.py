@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     # best passage is used for grounding.
     similarity_threshold: float = 0.90
 
+    # Emit structured retrieval telemetry (matched terms, scores, and chunk
+    # previews) into the server log for every chat request. Never enable in
+    # production: medical chunk text is included, so it writes patient data
+    # to logs.
+    retrieval_debug: bool = False
+
     # Upload limits
     max_upload_size_mb: int = 10
 

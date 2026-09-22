@@ -1,13 +1,47 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../lib/api";
-import type { DocumentItem, SummaryResponse } from "../types";
+import type { DocumentItem, SummaryResponse, ViewId } from "../types";
 import ChatSection from "./ChatSection";
-import DocumentInfo from "./DocumentInfo";
+import DocumentCard from "./DocumentCard";
+import DocumentHistory from "./DocumentHistory";
 import SummaryView from "./SummaryView";
 import UploadSection, { type UploadState } from "./UploadSection";
 
-export default function AssistantPage() {
+interface AssistantPageProps {
+  view: ViewId;
+  onNavigate: (view: ViewId) => void;
+}
+
+function EmptyState({
+  title,
+  text,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  text: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-8 text-center text-sm text-slate-400">
+      <p className="font-medium text-slate-300">{title}</p>
+      <p className="mt-1">{text}</p>
+      {actionLabel && onAction && (
+        <button
+          type="button"
+          onClick={onAction}
+          className="mt-4 rounded-md border border-teal-700 px-3 py-1.5 text-xs text-teal-300 hover:bg-teal-950/40"
+        >
+          {actionLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function AssistantPage({ view, onNavigate }: AssistantPageProps) {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loadingDocuments, setLoadingDocuments] = useState(true);
   const [activeDocument, setActiveDocument] = useState<DocumentItem | null>(null);
@@ -109,6 +143,7 @@ export default function AssistantPage() {
   const onSelectDocument = (document: DocumentItem) => {
     setActiveDocument(document);
     setSummaryError(null);
+    onNavigate("documents");
     if (!summaries[document.id]) {
       void fetchSummary(document);
     }
@@ -154,53 +189,85 @@ export default function AssistantPage() {
     }
   };
 
+  const onStartChat = (selected: DocumentItem) => {
+    setActiveDocument(selected);
+    setSummaryError(null);
+    onNavigate("chat");
+    if (!summaries[selected.id]) {
+      void fetchSummary(selected);
+    }
+  };
+
+  const onSummarizeDocument = (document: DocumentItem) => {
+    setActiveDocument(document);
+    setSummaryError(null);
+    onNavigate("summary");
+    if (!summaries[document.id]) {
+      void fetchSummary(document);
+    }
+  };
+
   const chatEnabled = activeDocument?.status === "processed";
   const activeSummary = activeDocument ? summaries[activeDocument.id] : undefined;
   const uploadBusy = uploadState === "uploading" || uploadState === "processing";
 
-  const onStartChat = (selected: DocumentItem) => {
-    setActiveDocument(selected);
-    setSummaryError(null);
-    if (!summaries[selected.id]) {
-      void fetchSummary(selected);
-    }
-    window.setTimeout(() => {
-      window.document.getElementById("chat-section")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 80);
-  };
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {pageError && (
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
           {pageError}
         </div>
       )}
 
-      <UploadSection
-        state={uploadState}
-        error={uploadError}
-        lastFilename={lastUpload}
-        disabled={uploadBusy}
-        onUploadFile={(file) => void onUploadFile(file)}
-      />
-
-      {!loadingDocuments && documents.length === 0 && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-center text-sm text-slate-400">
-          Upload a medical document above to get an AI summary and the chance to
-          ask questions about it.
+      {view === "documents" && (
+        <div className="grid items-stretch gap-6 lg:grid-cols-2">
+          <UploadSection
+            state={uploadState}
+            error={uploadError}
+            lastFilename={lastUpload}
+            disabled={uploadBusy}
+            onUploadFile={(file) => void onUploadFile(file)}
+          />
+          {!loadingDocuments && documents.length === 0 && (
+            <div className="lg:col-span-2 rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-center text-sm text-slate-400">
+              Upload a medical document to get an AI summary and the chance to
+              ask questions about it.
+            </div>
+          )}
+          <DocumentCard
+            document={activeDocument}
+            documentType={activeSummary?.document_type ?? null}
+            onSummarize={onSummarizeDocument}
+            onStartChat={onStartChat}
+            onDelete={onDelete}
+          />
         </div>
       )}
 
-      {documents.length > 0 && (
-        <DocumentInfo
+      {view === "summary" &&
+        (activeDocument ? (
+          <SummaryView
+            document={activeDocument}
+            summary={activeSummary}
+            loading={summaryLoading}
+            error={summaryError}
+            onRetry={onRetrySummary}
+            onRegenerate={onRegenerateSummary}
+          />
+        ) : (
+          <EmptyState
+            title="No summary yet"
+            text="Upload a medical document to generate its AI summary."
+            actionLabel="Go to documents"
+            onAction={() => onNavigate("documents")}
+          />
+        ))}
+
+      {view === "history" && (
+        <DocumentHistory
           documents={documents}
           activeDocument={activeDocument}
           loading={loadingDocuments}
-          documentType={activeSummary?.document_type ?? null}
           summaries={summaries}
           onSelect={onSelectDocument}
           onStartChat={onStartChat}
@@ -208,19 +275,28 @@ export default function AssistantPage() {
         />
       )}
 
-      {activeDocument && (
-        <SummaryView
-          document={activeDocument}
-          summary={activeSummary}
-          loading={summaryLoading}
-          error={summaryError}
-          onRetry={onRetrySummary}
-          onRegenerate={onRegenerateSummary}
+      {activeDocument && chatEnabled && (
+        <div className={view === "chat" ? undefined : "hidden"} aria-hidden={view !== "chat"}>
+          <ChatSection key={activeDocument.id} document={activeDocument} />
+        </div>
+      )}
+
+      {view === "chat" && activeDocument && !chatEnabled && (
+        <EmptyState
+          title="Chat is not ready yet"
+          text={`"${activeDocument.filename}" has not finished processing. Chat becomes available once the document is indexed.`}
+          actionLabel="View document status"
+          onAction={() => onNavigate("documents")}
         />
       )}
 
-      {chatEnabled && (
-        <ChatSection key={activeDocument.id} document={activeDocument} />
+      {view === "chat" && !activeDocument && (
+        <EmptyState
+          title="No document to chat about"
+          text="Select or upload a medical report first, then ask questions grounded in its content."
+          actionLabel="Go to documents"
+          onAction={() => onNavigate("documents")}
+        />
       )}
     </div>
   );

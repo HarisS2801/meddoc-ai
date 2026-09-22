@@ -28,9 +28,11 @@ def test_chat_returns_503_when_provider_fails(client, monkeypatch):
     monkeypatch.setattr("app.services.chat_service.build_chat_completer", _boom)
     document_id = _upload_doc(client)
 
+    # The question must ground on the uploaded note ("monthly") so retrieval
+    # succeeds; only then is Groq invoked and its failure becomes a 503.
     resp = client.post(
         "/api/chat",
-        json={"question": "Where is the clinic?", "document_ids": [document_id]},
+        json={"question": "What happens monthly?", "document_ids": [document_id]},
     )
 
     _assert_groq_unavailable(resp)

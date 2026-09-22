@@ -53,6 +53,14 @@ def create_app() -> FastAPI:
     application.include_router(chat.router, prefix="/api")
     application.include_router(review.router, prefix="/api")
 
+    # Retrieval debug telemetry. Only ever exposed when RETRIEVAL_DEBUG=true
+    # (default off, always off in production): it returns extracted chunk text
+    # and scores, so it must never be reachable in a deployed deployment.
+    if settings.retrieval_debug:
+        from app.api.routes import retrieval_debug
+
+        application.include_router(retrieval_debug.router, prefix="/api")
+
     return application
 
 

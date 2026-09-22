@@ -16,6 +16,8 @@ class DocumentOut(DocumentBase):
 
     id: int
     status: DocumentStatus
+    report_type: str | None = None
+    report_header: str | None = None
     extracted_text_len: int
     page_count: int
     chunk_count: int

@@ -123,6 +123,49 @@ def _ensure_summary_version_column(bind_engine) -> None:
         )
 
 
+def _ensure_report_metadata_columns(bind_engine) -> None:
+    """Backfill ``documents.report_type`` / ``documents.report_header``.
+
+    ``create_all`` never alters existing tables, so databases created
+    before document-level chat kept the report identity columns here.
+    Pre-existing rows keep ``NULL``; new uploads populate the columns.
+    """
+
+    def _migrate(connection) -> None:
+        table_names = {
+            name
+            for name in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).scalars()
+        }
+        if "documents" not in table_names:
+            return
+        columns = set()
+        for _cid, name, *_rest in connection.exec_driver_sql(
+            "PRAGMA table_info(documents)"
+        ).all():
+            if name:
+                columns.add(name)
+        if "report_type" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE documents ADD COLUMN report_type VARCHAR(255)"
+            )
+        if "report_header" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE documents ADD COLUMN report_header VARCHAR(255)"
+            )
+
+    try:
+        with bind_engine.begin() as connection:
+            _migrate(connection)
+    except Exception:
+        logger.warning(
+            "Could not backfill documents.report_type/report_header; "
+            "continuing without them.",
+            exc_info=True,
+        )
+
+
 def init_db() -> None:
     """Create every table (if it doesn't exist) and ensure data dirs exist.
 
@@ -142,4 +185,5 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     _ensure_conversation_document_column(engine)
     _ensure_summary_version_column(engine)
+    _ensure_report_metadata_columns(engine)
     logger.info("Database tables initialised at %s", db_file)

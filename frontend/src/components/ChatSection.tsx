@@ -10,8 +10,6 @@ interface ChatEntry {
   content: string;
   sources?: SourceRef[];
   reviewRecommended?: boolean;
-  provider?: string;
-  model?: string;
 }
 
 interface ChatSectionProps {
@@ -48,8 +46,6 @@ export default function ChatSection({ document }: ChatSectionProps) {
           content: response.answer,
           sources: response.sources,
           reviewRecommended: response.review_recommended,
-          provider: response.provider_used,
-          model: response.model_used,
         },
       ]);
     } catch (err) {
@@ -166,13 +162,8 @@ export default function ChatSection({ document }: ChatSectionProps) {
                   Reviewed by a human before use
                 </span>
               )}
-              {entry.provider && entry.model && (
-                <span className="mt-3 inline-flex items-center rounded-full border border-teal-600/40 bg-teal-600/10 px-2.5 py-0.5 text-xs text-teal-300">
-                  {entry.provider} · {entry.model}
-                </span>
-              )}
               {entry.sources && entry.sources.length > 0 && (
-                <SourceList sources={entry.sources} />
+                <SourceLine sources={entry.sources} />
               )}
             </div>
           </div>
@@ -217,7 +208,7 @@ export default function ChatSection({ document }: ChatSectionProps) {
   );
 }
 
-function SourceList({ sources }: { sources: SourceRef[] }) {
+function SourceLine({ sources }: { sources: SourceRef[] }) {
   const seen = new Set<string>();
   const unique = sources.filter((source) => {
     const key = `${source.filename}::${source.page_number ?? ""}`;
@@ -225,20 +216,37 @@ function SourceList({ sources }: { sources: SourceRef[] }) {
     seen.add(key);
     return true;
   });
+  if (unique.length === 0) return null;
+
+  const byFile = new Map<string, (number | null)[]>();
+  for (const source of unique) {
+    const pages = byFile.get(source.filename) ?? [];
+    pages.push(source.page_number);
+    byFile.set(source.filename, pages);
+  }
+
+  let plural = byFile.size > 1;
+  const parts: string[] = [];
+  for (const [filename, pages] of byFile) {
+    const numbered = [...new Set(pages.filter((p): p is number => p != null))].sort(
+      (a, b) => a - b,
+    );
+    if (numbered.length === 0) {
+      parts.push(filename);
+    } else if (numbered.length === 1) {
+      parts.push(`${filename} · Page ${numbered[0]}`);
+    } else {
+      plural = true;
+      parts.push(`${filename} · Pages ${numbered.join("–")}`);
+    }
+  }
 
   return (
-    <div className="mt-3 space-y-1 border-t border-slate-700 pt-2.5">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        Sources
-      </div>
-      {unique.map((source, index) => (
-        <p key={index} className="min-w-0 break-words text-xs leading-5 text-slate-500">
-          <span className="font-medium text-slate-400">{source.filename}</span>
-          {source.page_number != null && (
-            <span> · page {source.page_number}</span>
-          )}
-        </p>
-      ))}
-    </div>
+    <p className="mt-3 flex flex-wrap items-baseline gap-x-1.5 border-t border-slate-700 pt-2.5 text-xs text-slate-500">
+      <span className="font-medium text-slate-400">
+        {plural ? "Sources:" : "Source:"}
+      </span>
+      <span className="min-w-0 break-words leading-5">{parts.join(", ")}</span>
+    </p>
   );
 }

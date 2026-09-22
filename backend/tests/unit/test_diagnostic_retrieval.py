@@ -105,7 +105,7 @@ class TestDocumentThreeRetrievable:
         )
 
         question = "Which medications are listed in the care plan?"
-        hits = _retrieve(question, [3], get_settings())
+        hits = _retrieve(db_session, question, [3], get_settings())
 
         assert len(hits) >= 1
         assert hits[0]["document_id"] == 3

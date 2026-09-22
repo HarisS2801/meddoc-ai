@@ -18,6 +18,7 @@ from app.db.models import Document, DocumentChunk
 from app.services import vector_store as vector_store_module
 from app.services.embedding_service import build_embedding_service
 from app.utils.file_validator import CONTENT_TYPE_PDF, CONTENT_TYPE_TEXT
+from app.utils.report_detector import detect_report_type
 from app.utils.text_cleaner import chunk_text, clean_text, is_empty_text
 
 logger = get_logger("processing")
@@ -67,10 +68,13 @@ def process_document(db: Session, document: Document, file_path: Path) -> Docume
     chunks: list[DocumentChunk] = []
     index = 0
     total_length = 0
+    first_page_text = ""
     for page_number, raw_text in pages:
         cleaned = clean_text(raw_text)
         if is_empty_text(cleaned):
             continue
+        if not first_page_text:
+            first_page_text = cleaned
         for piece in chunk_text(cleaned, settings.chunk_size, settings.chunk_overlap):
             chunks.append(
                 DocumentChunk(
@@ -88,19 +92,24 @@ def process_document(db: Session, document: Document, file_path: Path) -> Docume
         db.commit()
         raise InvalidFileError(document.error_message)
 
+    report_meta = detect_report_type(first_page_text)
+
     document.status = DocumentStatus.PROCESSED.value
     document.chunk_count = len(chunks)
     document.page_count = len({chunk.page_number for chunk in chunks})
     document.extracted_text_len = total_length
+    document.report_type = report_meta.report_type if report_meta else None
+    document.report_header = report_meta.header if report_meta else None
     document.chunks = chunks
     db.commit()
     db.refresh(document)
 
     logger.info(
-        "Processed '%s': %d chunks across %d pages",
+        "Processed '%s': %d chunks across %d pages (report_type=%r)",
         document.filename,
         document.chunk_count,
         document.page_count,
+        document.report_type,
     )
     return document
 

@@ -47,7 +47,7 @@ class TestChatDouble:
     model = "test-mock"
 
     @staticmethod
-    def complete(*, query, context, history=None):  # noqa: ARG004
+    def complete(*, query, context, history=None, document_info=None):  # noqa: ARG004
         if not context:
             return (
                 "I could not find information about this in the uploaded "
